@@ -1,4 +1,4 @@
-(ns ^:figwheel-no-load aoc.day12
+(ns ^:figwheel-no-load aoc.day12.part2
   (:require
    [cljs.core.async :refer [go]]
    [cljs.core.async.interop :refer-macros [<p!]]
@@ -26,40 +26,48 @@ F11")
             :s :w
             :w :n})
 
+(defn rot-right [wp]
+  (sets/rename-keys wp right))
+
 (def left {:n :w
            :w :s
            :s :e
            :e :n})
 
+(defn rot-left [wp]
+  (sets/rename-keys wp left))
+
 (def actions
   {"N" (fn [ship val]
-         (update ship :n + val))
+         (update-in ship [:waypoint :n] + val))
 
    "S" (fn [ship val]
-         (update ship :s + val))
+         (update-in ship [:waypoint :s] + val))
 
    "E" (fn [ship val]
-         (update ship :e + val))
+         (update-in ship [:waypoint :e] + val))
 
    "W" (fn [ship val]
-         (update ship :w + val))
+         (update-in ship [:waypoint :w] + val))
 
-   "F" (fn [{:keys [dir] :as ship} val]
-         (update ship dir + val))
+   "F" (fn [{:keys [waypoint] :as ship} val]
+         (nth (iterate (partial merge-with + waypoint) ship) val))
 
-   "R" (fn [{:keys [dir] :as ship} val]
-         (let [new-dir (case val
-                         90 (right dir)
-                         180 (right (right dir))
-                         270 (right (right (right dir))))]
-           (conj ship [:dir new-dir])))
+   "R" (fn [{:keys [waypoint] :as ship} val]
+         (let [new-waypoint
+               (case val
+                 90 (rot-right waypoint)
+                 180 (rot-right (rot-right waypoint))
+                 270 (rot-right (rot-right (rot-right waypoint))))]
+           (conj ship [:waypoint new-waypoint])))
 
-   "L" (fn [{:keys [dir] :as ship} val]
-         (let [new-dir (case val
-                         90 (left dir)
-                         180 (left (left dir))
-                         270 (left (left (left dir))))]
-           (conj ship [:dir new-dir])))})
+   "L" (fn [{:keys [waypoint] :as ship} val]
+         (let [new-waypoint
+               (case val
+                 90 (rot-left waypoint)
+                 180 (rot-left (rot-left waypoint))
+                 270 (rot-left (rot-left (rot-left waypoint))))]
+           (conj ship [:waypoint new-waypoint])))})
 
 (defn parse-input [input]
   (->> input
@@ -74,7 +82,7 @@ F11")
 
 (defn solve [steps]
   (let [ship (atom {:n 0 :s 0 :e 0 :w 0
-                    :dir :e})]
+                    :waypoint {:n 1 :s 0 :e 10 :w 0}})]
     (doseq [[dir val] steps
             :let [action (actions dir)]]
       (swap! ship action val))
